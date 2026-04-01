@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seattle Schools — Distribution by School Level</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ffffff; color: #1a1a1a; padding: 24px; max-width: 900px; margin: 0 auto; }
+  h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat { background: #f7f7f7; border-radius: 8px; padding: 12px; border-top: 3px solid #ccc; }
+  .stat-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .stat-value { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+  .stat-sub { font-size: 11px; color: #999; margin-top: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; font-size: 12px; color: #555; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-line { width: 20px; height: 3px; border-radius: 2px; }
+  .legend-note { margin-left: auto; font-size: 11px; color: #999; }
+  .chart-wrap { position: relative; width: 100%; height: 320px; margin-bottom: 20px; }
+  .annotations { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+  .ann { background: #f7f7f7; border-radius: 8px; padding: 12px; border-left: 3px solid #ccc; }
+  .ann-title { font-size: 12px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+  .ann-text { font-size: 11px; color: #666; line-height: 1.5; }
+  .note { font-size: 11px; color: #999; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<h2>Impervious surface distribution by school level</h2>
+<p class="subtitle">Smoothed density curves showing how impervious surface percentages are distributed across each school type. A higher peak means more schools of that type cluster at that percentage. Dashed vertical lines mark the 55% and 75% thresholds. Data source: Seattle City GIS Tree Canopy Assessment 2016–2021.</p>
+
+<div class="stats">
+  <div class="stat" style="border-top-color:#378ADD">
+    <div class="stat-label">Elementary mean</div>
+    <div class="stat-value" id="el-m">–</div>
+    <div class="stat-sub" id="el-n">–</div>
+  </div>
+  <div class="stat" style="border-top-color:#1D9E75">
+    <div class="stat-label">Middle school mean</div>
+    <div class="stat-value" id="mi-m">–</div>
+    <div class="stat-sub" id="mi-n">–</div>
+  </div>
+  <div class="stat" style="border-top-color:#EF9F27">
+    <div class="stat-label">High school mean</div>
+    <div class="stat-value" id="hi-m">–</div>
+    <div class="stat-sub" id="hi-n">–</div>
+  </div>
+  <div class="stat" style="border-top-color:#D85A30">
+    <div class="stat-label">K-8 mean</div>
+    <div class="stat-value" id="k8-m">–</div>
+    <div class="stat-sub" id="k8-n">–</div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-line" style="background:#378ADD"></div>Elementary</div>
+  <div class="legend-item"><div class="legend-line" style="background:#1D9E75"></div>Middle school</div>
+  <div class="legend-item"><div class="legend-line" style="background:#EF9F27"></div>High school</div>
+  <div class="legend-item"><div class="legend-line" style="background:#D85A30"></div>K-8</div>
+  <span class="legend-note">Dashed lines = 55% and 75% thresholds</span>
+</div>
+
+<div class="chart-wrap">
+  <canvas id="myChart"></canvas>
+</div>
+
+<div class="annotations">
+  <div class="ann" style="border-left-color:#1D9E75">
+    <div class="ann-title">Middle schools — two distinct clusters</div>
+    <div class="ann-text">
+      <strong>Greener campuses (19–36%):</strong> Jane Adams, Robert Eagle Staff, Nathan Eckstein, Marcus Whitman<br><br>
+      <strong>High impervious (72–87%):</strong> Aki Kurose, Meany, Asa Mercer, McClure, Hamilton
+    </div>
+  </div>
+  <div class="ann" style="border-left-color:#378ADD">
+    <div class="ann-title">Elementary — two subtle clusters</div>
+    <div class="ann-text">
+      <strong>Greener campuses (13–28%):</strong> John Rogers, Dearborn, BF Day, Cedar, Cascadia<br><br>
+      <strong>High impervious (75–86%):</strong> E.C. Hughes, Loyal Heights, Beacon Hill, Laurelhurst
+    </div>
+  </div>
+  <div class="ann" style="border-left-color:#EF9F27">
+    <div class="ann-title">High schools — one cluster (~40–68%)</div>
+    <div class="ann-text">
+      <strong>Lowest:</strong> Nathan Hale (27%) — large campus with athletic fields<br><br>
+      <strong>Highest:</strong> Alan T. Sugiyama (68%), West Seattle (67%), Lincoln (73%)
+    </div>
+  </div>
+  <div class="ann" style="border-left-color:#D85A30">
+    <div class="ann-title">K-8 — one cluster with outlier</div>
+    <div class="ann-text">
+      <strong>Most cluster (34–47%):</strong> Louisa Boren, Salmon Bay, South Shore<br><br>
+      <strong>Major outlier:</strong> TOPS K-8 @ Seward (87%) — highest of any K-8 school
+    </div>
+  </div>
+</div>
+
+<p class="note">Density curves use kernel density estimation (bandwidth = 8) to smooth the distribution of each school type. The y-axis shows relative density — a higher peak means more schools cluster at that impervious surface percentage.</p>
+
+<script>
+const RAW=[
+  ["ADAMS ELEMENTARY","ELEMENTARY",58],["ALKI ELEMENTARY","ELEMENTARY",70],
+  ["ARBOR HEIGHTS ELEMENTARY","ELEMENTARY",53],["ASA MERCER JR HIGH","MIDDLE",82],
+  ["BAGLEY ELEMENTARY","ELEMENTARY",60],["BALLARD HIGH SCHOOL","HIGH",55],
+  ["BEACON HILL ELEMENTARY","ELEMENTARY",81],["BF DAY ELEMENTARY","ELEMENTARY",22],
+  ["LOUISA BOREN K-8","K-8",34],["BRIGHTON ELEMENTARY","ELEMENTARY",64],
+  ["BROADVIEW THOMAS ELEMENTARY","ELEMENTARY",44],["BRYANT ELEMENTARY","ELEMENTARY",36],
+  ["CASCADIA ELEMENTARY","ELEMENTARY",20],["CEDAR ELEMENTARY","ELEMENTARY",28],
+  ["CHIEF SEALTH HIGH SCHOOL","HIGH",58],["CLEVELAND HIGH SCHOOL","HIGH",40],
+  ["COLUMBIA INTER AGENCY HIGH","HIGH",47],["CONCORD ELEMENTARY","ELEMENTARY",32],
+  ["COOPER ELEMENTARY","ELEMENTARY",32],["DEARBORN PK ELEMENTARY","ELEMENTARY",19],
+  ["DUNLAP ELEMENTARY","ELEMENTARY",63],["E.C. HUGHES ELEMENTARY","ELEMENTARY",86],
+  ["EMERSON ELEMENTARY","ELEMENTARY",73],["FAIRMOUNT PARK ELEMENTARY","ELEMENTARY",60],
+  ["FRANTZ H COE ELEMENTARY","ELEMENTARY",76],["GARFIELD HIGH SCHOOL","HIGH",49],
+  ["GATEWOOD ELEMENTARY","ELEMENTARY",49],["GENESEE HILL ELEMENTARY","ELEMENTARY",38],
+  ["GRAHAM HILL ELEMENTARY","ELEMENTARY",51],["GREENLAKE ELEMENTARY","ELEMENTARY",55],
+  ["GREENWOOD ELEMENTARY","ELEMENTARY",50],["HAMILTON MIDDLE SCHOOL","MIDDLE",87],
+  ["HAWTHORNE ELEMENTARY","ELEMENTARY",48],["HIGHLAND PARK ELEMENTARY","ELEMENTARY",75],
+  ["HORACE MANN / NOVA HIGH","HIGH",41],["INGRAHAM HIGH SCHOOL","HIGH",33],
+  ["JAMES MADISON MIDDLE","MIDDLE",56],["JANE ADAMS MIDDLE","MIDDLE",19],
+  ["JOHN HAY ELEMENTARY","ELEMENTARY",55],["QUEEN ANNE ELEMENTARY","ELEMENTARY",75],
+  ["JOHN MUIR ELEMENTARY","ELEMENTARY",52],["JOHN ROGERS ELEMENTARY","ELEMENTARY",13],
+  ["KIMBALL ELEMENTARY","ELEMENTARY",35],["LAFAYETTE ELEMENTARY","ELEMENTARY",72],
+  ["LATONA ELEMENTARY","ELEMENTARY",62],["LAURELHURST ELEMENTARY","ELEMENTARY",78],
+  ["LAWTON ELEMENTARY","ELEMENTARY",31],["LESCHI ELEMENTARY","ELEMENTARY",63],
+  ["LOWELL ELEMENTARY","ELEMENTARY",77],["LINCOLN HIGH SCHOOL","HIGH",73],
+  ["LOYAL HEIGHTS ELEMENTARY","ELEMENTARY",83],["MADRONA ELEMENTARY","ELEMENTARY",68],
+  ["MAGNOLIA ELEMENTARY","ELEMENTARY",73],["MAPLE ELEMENTARY","ELEMENTARY",40],
+  ["MARCUS WHITMAN MIDDLE","MIDDLE",36],["MCCLURE MIDDLE SCHOOL","MIDDLE",86],
+  ["MCDONALD ELEMENTARY","ELEMENTARY",54],["MCGILVRA ELEMENTARY","ELEMENTARY",38],
+  ["MEANY MIDDLE SCHOOL","MIDDLE",80],["MONTLAKE ELEMENTARY","ELEMENTARY",71],
+  ["NATHAN ECKSTEIN MIDDLE","MIDDLE",31],["NATHAN HALE HIGH SCHOOL","HIGH",27],
+  ["NORTH BEACH ELEMENTARY","ELEMENTARY",42],["NORTHGATE ELEMENTARY","ELEMENTARY",77],
+  ["OLYMPIC HILLS ELEMENTARY","ELEMENTARY",51],["OLYMPIC VIEW ELEMENTARY","ELEMENTARY",34],
+  ["GATZERT ELEMENTARY","ELEMENTARY",43],["RAINIER BEACH HIGH SCHOOL","HIGH",43],
+  ["RAINIER VIEW ELEMENTARY","ELEMENTARY",39],["ROBERT EAGLE STAFF MIDDLE","MIDDLE",24],
+  ["ROOSEVELT HIGH SCHOOL","HIGH",60],["ROXHILL ELEMENTARY","ELEMENTARY",54],
+  ["SACAJAWEA ELEMENTARY","ELEMENTARY",42],["SALMON BAY K-8","K-8",46],
+  ["SAND POINT ELEMENTARY","ELEMENTARY",59],["SCHMITZ PARK ELEMENTARY","ELEMENTARY",52],
+  ["SEATTLE ELEMENTARY","ELEMENTARY",71],["HAZEL WOLF ELEMENTARY","ELEMENTARY",41],
+  ["SEATTLE WORLD SCHOOL","HIGH",53],["AKI KUROSE MIDDLE","MIDDLE",72],
+  ["ALAN T. SUGIYAMA HIGH","HIGH",68],["SOUTH SHORE K-8","K-8",47],
+  ["STEPHEN DECATUR ELEMENTARY","ELEMENTARY",51],["THORNTON CREEK ELEMENTARY","ELEMENTARY",74],
+  ["THURGOOD MARSHALL ELEMENTARY","ELEMENTARY",46],["TOPS K-8 @ SEWARD","K-8",87],
+  ["VAN ASSELT ELEMENTARY","ELEMENTARY",36],["VIEW RIDGE ELEMENTARY","ELEMENTARY",32],
+  ["WEDGWOOD ELEMENTARY","ELEMENTARY",26],["WEST SEATTLE HIGH SCHOOL","HIGH",67],
+  ["WEST WOODLAND ELEMENTARY","ELEMENTARY",59],["WHITTIER ELEMENTARY","ELEMENTARY",73],
+  ["WHITWORTH ELEMENTARY","ELEMENTARY",47],["WING LUKE ELEMENTARY","ELEMENTARY",45]
+];
+
+const schools=RAW.map(r=>({name:r[0],level:r[1],v:r[2]}));
+const TYPES=['ELEMENTARY','MIDDLE','HIGH','K-8'];
+const COLS={'ELEMENTARY':'#378ADD','MIDDLE':'#1D9E75','HIGH':'#EF9F27','K-8':'#D85A30'};
+const LABS={'ELEMENTARY':'Elementary','MIDDLE':'Middle','HIGH':'High school','K-8':'K-8'};
+const IDS={'ELEMENTARY':'el','MIDDLE':'mi','HIGH':'hi','K-8':'k8'};
+
+function avg(a){return a.reduce((s,x)=>s+x,0)/a.length;}
+function kde(data,x,bw){bw=bw||8;return data.reduce(function(s,xi){return s+Math.exp(-0.5*Math.pow((x-xi)/bw,2))/(bw*Math.sqrt(2*Math.PI));},0)/data.length;}
+
+var xR=[];
+for(var x=10;x<=92;x+=0.5) xR.push(x);
+
+function init(){
+  TYPES.forEach(function(t){
+    var v=schools.filter(function(s){return s.level===t;}).map(function(s){return s.v;});
+    if(!v.length) return;
+    var id=IDS[t];
+    document.getElementById(id+'-m').textContent=avg(v).toFixed(1)+'%';
+    document.getElementById(id+'-n').textContent=v.length+' schools';
+  });
+
+  var datasets=TYPES.map(function(t){
+    var v=schools.filter(function(s){return s.level===t;}).map(function(s){return s.v;});
+    if(!v.length) return null;
+    return{
+      label:LABS[t],
+      data:xR.map(function(x){return{x:x,y:kde(v,x)};}),
+      borderColor:COLS[t],
+      backgroundColor:'transparent',
+      borderWidth:2.5,
+      pointRadius:0,
+      tension:0.4
+    };
+  }).filter(Boolean);
+
+  new Chart(document.getElementById('myChart'),{
+    type:'line',
+    data:{datasets:datasets},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      parsing:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:function(c){return '~'+Math.round(c[0].raw.x)+'% impervious surface';},
+          label:function(c){return c.dataset.label;}
+        }}
+      },
+      scales:{
+        x:{
+          type:'linear',min:10,max:92,
+          title:{display:true,text:'Impervious surface %',color:'#666',font:{size:11}},
+          ticks:{color:'#666',font:{size:11},callback:function(v){return v+'%';}},
+          grid:{
+            color:function(ctx){return (ctx.tick.value===55||ctx.tick.value===75)?'rgba(0,0,0,0.3)':'rgba(0,0,0,0.06)';},
+            lineWidth:function(ctx){return (ctx.tick.value===55||ctx.tick.value===75)?1.5:0.5;},
+            borderDash:function(ctx){return (ctx.tick.value===55||ctx.tick.value===75)?[5,4]:[];}
+          }
+        },
+        y:{
+          title:{display:true,text:'Density',color:'#666',font:{size:11}},
+          ticks:{color:'#666',font:{size:10}},
+          grid:{color:'rgba(0,0,0,0.06)'}
+        }
+      }
+    }
+  });
+}
+setTimeout(init,300);
+</script>
+</body>
+</html>

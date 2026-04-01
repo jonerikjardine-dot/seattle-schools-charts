@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seattle Schools — Tier Breakdown by School Level</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ffffff; color: #1a1a1a; padding: 24px; max-width: 900px; margin: 0 auto; }
+  h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .subtitle { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; font-size: 12px; color: #555; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+  .chart-wrap { position: relative; width: 100%; height: 340px; }
+  .note { font-size: 11px; color: #999; margin-top: 16px; }
+  .summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
+  .sc { background: #f7f7f7; border-radius: 8px; padding: 10px 12px; }
+  .sc-label { font-size: 11px; color: #888; margin-bottom: 3px; }
+  .sc-val { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+  .sc-sub { font-size: 11px; color: #999; }
+</style>
+</head>
+<body>
+
+<h2>Impervious surface tier breakdown by school level</h2>
+<p class="subtitle">Each bar shows the number of schools of that type falling into each impervious surface tier. Stacked bars allow comparison of how the tier distribution differs across elementary, middle, high school, and K-8 campuses. Data source: Seattle City GIS Tree Canopy Assessment 2016–2021.</p>
+
+<div class="summary" id="summary"></div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#4393c3"></div>Below 55% — relatively green</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#f4a582"></div>55–65% — moderate concern</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#d6604d"></div>65–75% — high impervious</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#8B1A1A"></div>Above 75% — urgent need</div>
+</div>
+
+<div class="chart-wrap">
+  <canvas id="myChart"></canvas>
+</div>
+
+<p class="note">55% threshold reflects the level at which urban heat island effects become a significant concern for students. 75% threshold represents the most urgent priority for green schoolyard investment.</p>
+
+<script>
+const RAW=[
+  ["ADAMS ELEMENTARY","ELEMENTARY",58],["ALKI ELEMENTARY","ELEMENTARY",70],
+  ["ARBOR HEIGHTS ELEMENTARY","ELEMENTARY",53],["ASA MERCER JR HIGH","MIDDLE",82],
+  ["BAGLEY ELEMENTARY","ELEMENTARY",60],["BALLARD HIGH SCHOOL","HIGH",55],
+  ["BEACON HILL ELEMENTARY","ELEMENTARY",81],["BF DAY ELEMENTARY","ELEMENTARY",22],
+  ["LOUISA BOREN K-8","K-8",34],["BRIGHTON ELEMENTARY","ELEMENTARY",64],
+  ["BROADVIEW THOMAS ELEMENTARY","ELEMENTARY",44],["BRYANT ELEMENTARY","ELEMENTARY",36],
+  ["CASCADIA ELEMENTARY","ELEMENTARY",20],["CEDAR ELEMENTARY","ELEMENTARY",28],
+  ["CHIEF SEALTH HIGH SCHOOL","HIGH",58],["CLEVELAND HIGH SCHOOL","HIGH",40],
+  ["COLUMBIA INTER AGENCY HIGH","HIGH",47],["CONCORD ELEMENTARY","ELEMENTARY",32],
+  ["COOPER ELEMENTARY","ELEMENTARY",32],["DEARBORN PK ELEMENTARY","ELEMENTARY",19],
+  ["DUNLAP ELEMENTARY","ELEMENTARY",63],["E.C. HUGHES ELEMENTARY","ELEMENTARY",86],
+  ["EMERSON ELEMENTARY","ELEMENTARY",73],["FAIRMOUNT PARK ELEMENTARY","ELEMENTARY",60],
+  ["FRANTZ H COE ELEMENTARY","ELEMENTARY",76],["GARFIELD HIGH SCHOOL","HIGH",49],
+  ["GATEWOOD ELEMENTARY","ELEMENTARY",49],["GENESEE HILL ELEMENTARY","ELEMENTARY",38],
+  ["GRAHAM HILL ELEMENTARY","ELEMENTARY",51],["GREENLAKE ELEMENTARY","ELEMENTARY",55],
+  ["GREENWOOD ELEMENTARY","ELEMENTARY",50],["HAMILTON MIDDLE SCHOOL","MIDDLE",87],
+  ["HAWTHORNE ELEMENTARY","ELEMENTARY",48],["HIGHLAND PARK ELEMENTARY","ELEMENTARY",75],
+  ["HORACE MANN / NOVA HIGH","HIGH",41],["INGRAHAM HIGH SCHOOL","HIGH",33],
+  ["JAMES MADISON MIDDLE","MIDDLE",56],["JANE ADAMS MIDDLE","MIDDLE",19],
+  ["JOHN HAY ELEMENTARY","ELEMENTARY",55],["QUEEN ANNE ELEMENTARY","ELEMENTARY",75],
+  ["JOHN MUIR ELEMENTARY","ELEMENTARY",52],["JOHN ROGERS ELEMENTARY","ELEMENTARY",13],
+  ["KIMBALL ELEMENTARY","ELEMENTARY",35],["LAFAYETTE ELEMENTARY","ELEMENTARY",72],
+  ["LATONA ELEMENTARY","ELEMENTARY",62],["LAURELHURST ELEMENTARY","ELEMENTARY",78],
+  ["LAWTON ELEMENTARY","ELEMENTARY",31],["LESCHI ELEMENTARY","ELEMENTARY",63],
+  ["LOWELL ELEMENTARY","ELEMENTARY",77],["LINCOLN HIGH SCHOOL","HIGH",73],
+  ["LOYAL HEIGHTS ELEMENTARY","ELEMENTARY",83],["MADRONA ELEMENTARY","ELEMENTARY",68],
+  ["MAGNOLIA ELEMENTARY","ELEMENTARY",73],["MAPLE ELEMENTARY","ELEMENTARY",40],
+  ["MARCUS WHITMAN MIDDLE","MIDDLE",36],["MCCLURE MIDDLE SCHOOL","MIDDLE",86],
+  ["MCDONALD ELEMENTARY","ELEMENTARY",54],["MCGILVRA ELEMENTARY","ELEMENTARY",38],
+  ["MEANY MIDDLE SCHOOL","MIDDLE",80],["MONTLAKE ELEMENTARY","ELEMENTARY",71],
+  ["NATHAN ECKSTEIN MIDDLE","MIDDLE",31],["NATHAN HALE HIGH SCHOOL","HIGH",27],
+  ["NORTH BEACH ELEMENTARY","ELEMENTARY",42],["NORTHGATE ELEMENTARY","ELEMENTARY",77],
+  ["OLYMPIC HILLS ELEMENTARY","ELEMENTARY",51],["OLYMPIC VIEW ELEMENTARY","ELEMENTARY",34],
+  ["GATZERT ELEMENTARY","ELEMENTARY",43],["RAINIER BEACH HIGH SCHOOL","HIGH",43],
+  ["RAINIER VIEW ELEMENTARY","ELEMENTARY",39],["ROBERT EAGLE STAFF MIDDLE","MIDDLE",24],
+  ["ROOSEVELT HIGH SCHOOL","HIGH",60],["ROXHILL ELEMENTARY","ELEMENTARY",54],
+  ["SACAJAWEA ELEMENTARY","ELEMENTARY",42],["SALMON BAY K-8","K-8",46],
+  ["SAND POINT ELEMENTARY","ELEMENTARY",59],["SCHMITZ PARK ELEMENTARY","ELEMENTARY",52],
+  ["SEATTLE ELEMENTARY","ELEMENTARY",71],["HAZEL WOLF ELEMENTARY","ELEMENTARY",41],
+  ["SEATTLE WORLD SCHOOL","HIGH",53],["AKI KUROSE MIDDLE","MIDDLE",72],
+  ["ALAN T. SUGIYAMA HIGH","HIGH",68],["SOUTH SHORE K-8","K-8",47],
+  ["STEPHEN DECATUR ELEMENTARY","ELEMENTARY",51],["THORNTON CREEK ELEMENTARY","ELEMENTARY",74],
+  ["THURGOOD MARSHALL ELEMENTARY","ELEMENTARY",46],["TOPS K-8 @ SEWARD","K-8",87],
+  ["VAN ASSELT ELEMENTARY","ELEMENTARY",36],["VIEW RIDGE ELEMENTARY","ELEMENTARY",32],
+  ["WEDGWOOD ELEMENTARY","ELEMENTARY",26],["WEST SEATTLE HIGH SCHOOL","HIGH",67],
+  ["WEST WOODLAND ELEMENTARY","ELEMENTARY",59],["WHITTIER ELEMENTARY","ELEMENTARY",73],
+  ["WHITWORTH ELEMENTARY","ELEMENTARY",47],["WING LUKE ELEMENTARY","ELEMENTARY",45]
+];
+
+const schools=RAW.map(function(r){return{name:r[0],level:r[1],v:r[2]};});
+const TYPES=['ELEMENTARY','MIDDLE','HIGH','K-8'];
+const LABS=['Elementary','Middle school','High school','K-8'];
+
+const tiers=[
+  {label:'Below 55%',color:'#4393c3',fn:function(v){return v<55;}},
+  {label:'55–65%',color:'#f4a582',fn:function(v){return v>=55&&v<65;}},
+  {label:'65–75%',color:'#d6604d',fn:function(v){return v>=65&&v<75;}},
+  {label:'Above 75%',color:'#8B1A1A',fn:function(v){return v>=75;}}
+];
+
+function avg(a){return a.reduce(function(s,x){return s+x;},0)/a.length;}
+
+function buildSummary(){
+  var html='';
+  TYPES.forEach(function(t,i){
+    var v=schools.filter(function(s){return s.level===t;}).map(function(s){return s.v;});
+    var above=v.filter(function(x){return x>=55;}).length;
+    html+='<div class="sc"><div class="sc-label">'+LABS[i]+'</div><div class="sc-val">'+avg(v).toFixed(1)+'%</div><div class="sc-sub">mean &bull; '+v.length+' schools &bull; '+above+' above 55%</div></div>';
+  });
+  document.getElementById('summary').innerHTML=html;
+}
+
+function init(){
+  buildSummary();
+  new Chart(document.getElementById('myChart'),{
+    type:'bar',
+    data:{
+      labels:LABS,
+      datasets:tiers.map(function(t){return{
+        label:t.label,
+        backgroundColor:t.color,
+        data:TYPES.map(function(tp){return schools.filter(function(s){return s.level===tp&&t.fn(s.v);}).length;})
+      };})
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label:function(c){return c.dataset.label+': '+c.raw+' school'+(c.raw!==1?'s':'');}
+        }}
+      },
+      scales:{
+        x:{
+          stacked:true,
+          ticks:{color:'#666',font:{size:12}},
+          grid:{display:false}
+        },
+        y:{
+          stacked:true,
+          ticks:{color:'#666',font:{size:11},stepSize:2},
+          grid:{color:'rgba(0,0,0,0.06)'},
+          title:{display:true,text:'Number of schools',color:'#666',font:{size:11}}
+        }
+      }
+    }
+  });
+}
+setTimeout(init,300);
+</script>
+</body>
+</html>
